@@ -791,7 +791,13 @@
                 },
                 body: JSON.stringify({
                     model: "llama-3.3-70b-versatile",
-                    messages: [{ role: "user", content: text }]
+                    messages: [
+    { 
+        role: "system", 
+        content: "Bạn là trợ lý AI chuyên nghiệp của trang web Phòng thí nghiệm VLXD - Công ty Số 2 (LASXD17001LAMDONG). Hãy tư vấn và giải đáp các thắc mắc của khách hàng dựa trên lĩnh vực kiểm định xây dựng, thí nghiệm vật liệu, đất công trình một cách chính xác." 
+    },
+    { role: "user", content: text }
+]
                 })
             });
 
