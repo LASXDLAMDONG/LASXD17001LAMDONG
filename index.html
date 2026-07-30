@@ -731,5 +731,93 @@
         }, 200);
     });
 </script>
+    <!-- KHUNG CHAT NỔI Ở GÓC DƯỚI CÙNG TRANG WEB -->
+<div id="ai-chat-widget" style="position: fixed; bottom: 20px; right: 20px; width: 350px; height: 450px; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: flex; flex-direction: column; border: 1px solid #ddd; z-index: 9999; font-family: Arial, sans-serif;">
+    
+    <!-- Tiêu đề khung chat -->
+    <div style="background: #007bff; color: white; padding: 12px 15px; border-top-left-radius: 12px; border-top-right-radius: 12px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+        <span>Trợ Lý AI Trực Tuyến</span>
+    </div>
+
+    <!-- Khu vực hiển thị tin nhắn -->
+    <div id="chat-container" style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #f9f9f9;">
+        <div class="message ai-message" style="background: #e9ecef; color: #333; padding: 8px 12px; border-radius: 6px; max-width: 85%; font-size: 14px;">Xin chào! Tôi có thể giúp gì cho bạn hôm nay?</div>
+    </div>
+
+    <!-- Ô nhập tin nhắn -->
+    <div style="display: flex; padding: 10px; border-top: 1px solid #ddd; background: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; gap: 8px;">
+        <textarea id="query-input" placeholder="Nhập tin nhắn..." style="flex: 1; height: 35px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; resize: none; font-family: inherit; font-size: 13px;"></textarea>
+        <button id="send-btn" style="background-color: #007bff; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">Gửi</button>
+    </div>
+</div>
+
+<!-- PHẦN XỬ LÝ KẾT NỐI AI -->
+<script>
+    const chatContainer = document.getElementById('chat-container');
+    const queryInput = document.getElementById('query-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    const apiKey = "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"; 
+    const url = `https://api.groq.com/openai/v1/chat/completions`;
+
+    function appendMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = sender === 'user' 
+            ? "background-color: #007bff; color: white; padding: 8px 12px; border-radius: 6px; max-width: 85%; align-self: flex-end; font-size: 14px; word-wrap: break-word;"
+            : "background-color: #e9ecef; color: #333; padding: 8px 12px; border-radius: 6px; max-width: 85%; align-self: flex-start; font-size: 14px; word-wrap: break-word;";
+        messageDiv.innerText = text;
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return messageDiv;
+    }
+
+    async function handleSend() {
+        const text = queryInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, 'user');
+        queryInput.value = '';
+
+        const loadingDiv = appendMessage('AI đang trả lời...', 'ai');
+        loadingDiv.style.fontStyle = 'italic';
+        loadingDiv.style.opacity = '0.6';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [{ role: "user", content: text }]
+                })
+            });
+
+            const result = await response.json();
+            loadingDiv.remove();
+
+            if (result.error) {
+                appendMessage(`Lỗi API: ${result.error.message}`, 'ai');
+                return;
+            }
+
+            const aiReply = result.choices?.[0]?.message?.content || "Không nhận được phản hồi.";
+            appendMessage(aiReply, 'ai');
+        } catch (error) {
+            loadingDiv.remove();
+            appendMessage(`Lỗi kết nối: ${error.message}`, 'ai');
+        }
+    }
+
+    sendBtn.addEventListener('click', handleSend);
+    queryInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    });
+</script>
 </body>
 </html>
