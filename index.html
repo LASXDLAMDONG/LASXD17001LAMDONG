@@ -825,5 +825,109 @@
         }
     });
 </script>
+    <!-- KHUNG CHAT NỘI BỘ CÔNG TY (ĐÃ ĐƯA LÊN PHÍA TRÊN PHẦN THÔNG TIN) -->
+<div id="internal-chat-widget" style="position: fixed; bottom: 130px; right: 20px; width: 360px; height: 480px; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: flex; flex-direction: column; border: 1px solid #ddd; z-index: 9999; font-family: Arial, sans-serif;">
+    
+    <!-- Tiêu đề khung chat -->
+    <div style="background: #2c3e50; color: white; padding: 12px 15px; border-top-left-radius: 12px; border-top-right-radius: 12px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+        <span>💬 Chat Nội Bộ Công Ty</span>
+        <input type="text" id="username-input" placeholder="Tên của bạn..." style="width: 110px; padding: 4px 6px; font-size: 12px; border-radius: 4px; border: none;" value="Kỹ sư">
+    </div>
+
+    <!-- Khu vực hiển thị tin nhắn -->
+    <div id="chat-messages" style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #f8f9fa;">
+        <div style="text-align: center; color: #888; font-size: 12px;">Đang kết nối hệ thống chat nội bộ...</div>
+    </div>
+
+    <!-- Ô nhập tin nhắn -->
+    <div style="display: flex; padding: 10px; border-top: 1px solid #ddd; background: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; gap: 8px;">
+        <textarea id="message-input" placeholder="Nhập tin nhắn công việc..." style="flex: 1; height: 35px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; resize: none; font-family: inherit; font-size: 13px;"></textarea>
+        <button id="send-btn" style="background-color: #2c3e50; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">Gửi</button>
+    </div>
+</div>
+
+<!-- THƯ VIỆN SUPABASE CLIENT -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // --- THÔNG TIN KẾT NỐI SUPABASE CỦA BẠN ---
+    const SUPABASE_URL = 'https://cfwhlbnhdjybkzjgtcqw.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_eor9rscU39mO-ST3z0K9Pw_gRXOuduL'; // (Nhớ thay đoạn anon key chuẩn từ mục Settings -> API trong Supabase của bạn vào đây)
+    
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const usernameInput = document.getElementById('username-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    // 1. Tải lịch sử tin nhắn cũ
+    async function fetchMessages() {
+        const { data, error } = await client
+            .from('messages')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('Lỗi tải tin nhắn:', error);
+            chatMessages.innerHTML = '<div style="text-align: center; color: red; font-size: 12px;">Chưa tạo bảng messages trong Supabase!</div>';
+            return;
+        }
+
+        chatMessages.innerHTML = '';
+        data.forEach(msg => {
+            appendMessageUI(msg.sender, msg.content, msg.sender === usernameInput.value);
+        });
+    }
+
+    // 2. Hiển thị tin nhắn lên giao diện
+    function appendMessageUI(sender, content, isMe) {
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = isMe 
+            ? "background-color: #d1e7dd; color: #0f5132; padding: 8px 12px; border-radius: 6px; max-width: 85%; align-self: flex-end; font-size: 13px; word-wrap: break-word;"
+            : "background-color: #fff; color: #333; padding: 8px 12px; border-radius: 6px; max-width: 85%; align-self: flex-start; font-size: 13px; word-wrap: break-word; border: 1px solid #ddd;";
+        
+        msgDiv.innerHTML = `<strong>${sender}:</strong> ${content}`;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 3. Gửi tin nhắn mới
+    async function sendMessage() {
+        const content = messageInput.value.trim();
+        const sender = usernameInput.value.trim() || 'Nhân viên';
+        if (!content) return;
+
+        const { error } = await client
+            .from('messages')
+            .insert([{ sender: sender, content: content }]);
+
+        if (error) {
+            alert('Lỗi gửi tin nhắn: ' + error.message);
+            return;
+        }
+
+        messageInput.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // 4. Nhận tin nhắn thời gian thực (Realtime)
+    client
+        .channel('public:messages')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+            const newMsg = payload.new;
+            appendMessageUI(newMsg.sender, newMsg.content, newMsg.sender === usernameInput.value);
+        })
+        .subscribe();
+
+    fetchMessages();
+</script>
 </body>
 </html>
